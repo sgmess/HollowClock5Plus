@@ -20,7 +20,6 @@ public:
   HollowClock(const HollowClock &) = delete;
   HollowClock &operator=(const HollowClock &) = delete;
 
-  void rotate(int steps, int delaytime);
   void setDirection(bool direction);
   void setAllowBackwardMovement(bool allow);
   void saveClockPosition(void);
@@ -41,6 +40,8 @@ private:
   HollowClock();
   ~HollowClock() = default;
 
+  void adjustClockPosition(int steps);
+
   uint32_t makeCommand(uint8_t cmd, uint8_t val1, uint8_t val2);
   uint32_t makeCommand(uint8_t cmd, int val);
   bool addToQueue(uint32_t value);
@@ -55,16 +56,8 @@ private:
   bool positioning = false;
   uint32_t steps_per_minute;
   uint8_t delay_time;
-  int phase = 0;
-  int ports[2][4];
   std::atomic<uint32_t> clock_position;
   uint32_t max_clock_position;
-
-  // sequence of stepper motor control
-  const int seq[4][4] = {{LOW, LOW, HIGH, LOW},
-                         {LOW, LOW, LOW, HIGH},
-                         {HIGH, LOW, LOW, LOW},
-                         {LOW, HIGH, LOW, LOW}};
 
   void threadFunction(void);
   std::thread clockThread;

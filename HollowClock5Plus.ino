@@ -142,7 +142,7 @@ void setup() {
     TRACE("WiFi connected. IP address: %s\n",
           WiFi.localIP().toString().c_str());
     MDNS.begin(hostname);
-    WiFi.hostname(hostname);
+    WiFi.setHostname(hostname.c_str());
     getNTPTime();
     hclock.start();
     wifi_setup_done = true;
@@ -151,9 +151,9 @@ void setup() {
     WiFi.softAPConfig(pm.getServerIP().c_str(), pm.getServerGW().c_str(),
                       pm.getServerMask().c_str());
     WiFi.softAP(pm.getHostName().c_str());
-    WiFi.hostname(pm.getHostName().c_str());
+    WiFi.setHostname(pm.getHostName().c_str());
     dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-    WiFi.persistent(true);
+    WiFi.persistent(false);
   }
 
   TRACE("WiFi acting as %s\n", wifi_setup_done ? "STA" : "AP");

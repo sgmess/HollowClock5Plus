@@ -1,5 +1,6 @@
 #include "HollowClock.h"
 #include "PreferencesManager.h"
+#include "Motor.h"
 #include "config.h"
 #include <thread>
 #include <time.h>
@@ -28,36 +29,8 @@ HollowClock &HollowClock::getInstance() {
   return instance;
 }
 
-// original function from shiura modified by me
-void HollowClock::rotate(int steps, int delaytime) {
-  int stepIndex, phaseIndex;
-  int delta = (steps > 0) ? 1 : 3;
-  int dt;
 
-  if (delaytime > 0) {
-    dt = delaytime * 3;
-  } else {
-    delaytime = 2;
-    dt = 2 * delaytime;
-  }
-  int idx = flip_rotation ? 1 : 0;
-
-  int abs_steps = (steps > 0) ? steps : -steps;
-  for (phaseIndex = 0; phaseIndex < abs_steps; phaseIndex++) {
-    phase = (phase + delta) % 4;
-    for (stepIndex = 0; stepIndex < 4; stepIndex++) {
-      digitalWrite(ports[idx][stepIndex], seq[phase][stepIndex]);
-    }
-
-    delay(dt);
-    if (dt > delaytime)
-      dt--;
-  }
-  // power cut
-  for (stepIndex = 0; stepIndex < 4; stepIndex++) {
-    digitalWrite(ports[idx][stepIndex], LOW);
-  }
-
+void HollowClock::adjustClockPosition(int steps) {
   // Adjust current position
   if (clock_position != PreferencesManager::INVALID_CLOCK_POSITION)
     clock_position = (steps > 0)
@@ -66,7 +39,7 @@ void HollowClock::rotate(int steps, int delaytime) {
                                max_clock_position;
   else
     clock_position = PreferencesManager::INVALID_CLOCK_POSITION;
-}
+} 
 
 void HollowClock::saveClockPosition(void) {
   PreferencesManager &pm = PreferencesManager::getInstance();
@@ -81,6 +54,7 @@ void HollowClock::setAllowBackwardMovement(bool allow) {
 
 void HollowClock::threadFunction(void) {
   bool clock_moving = true;
+  MotorControl &motor = MotorControl::getInstance();
   while (true) {
     struct tm timeinfo;
 
@@ -104,16 +78,20 @@ void HollowClock::threadFunction(void) {
           while (steps > 0) {
             int step = (steps > MAX_FAST_MOVMENT_STEPS) ? MAX_FAST_MOVMENT_STEPS
                                                         : steps;
-            rotate(step, delay_time);
+            motor.rotate(step, delay_time,flip_rotation);
+            adjustClockPosition(step);
             steps -= step;
+            delay(10);
           }
         } else if (allow_backward_movement) {
           while (steps < 0) {
             int step = (steps < -MAX_FAST_MOVMENT_STEPS)
                            ? -MAX_FAST_MOVMENT_STEPS
                            : steps;
-            rotate(step, delay_time);
+            motor.rotate(step, delay_time, flip_rotation);
+            adjustClockPosition(step);
             steps -= step;
+            delay(10);
           }
         }
         break;
@@ -140,7 +118,8 @@ void HollowClock::threadFunction(void) {
 
       if (clock_position == PreferencesManager::INVALID_CLOCK_POSITION) {
         // We don't know the current position of the clock so just tick
-        rotate(steps_per_minute / 16, delay_time);
+        motor.rotate(steps_per_minute / 16, delay_time, flip_rotation);
+        adjustClockPosition(steps_per_minute / 16);
         delay(60000 / 16);
       } else {
         if (current_position != clock_position) {
@@ -178,9 +157,11 @@ void HollowClock::threadFunction(void) {
             if (time_diff <= MAX_FAST_MOVMENT_STEPS) {
               saveClockPosition();
             }
-            rotate(direction_forward ? time_diff : -time_diff,
-                   -1); // move fast to the current position
+            motor.rotate(direction_forward ? time_diff : -time_diff,
+                   -1, flip_rotation); // move fast to the current position
+            adjustClockPosition(direction_forward ? time_diff : -time_diff);
             positioning = false;
+            delay(10);
             continue;
           } else {
             int32_t local_clock_position = clock_position;
@@ -188,7 +169,8 @@ void HollowClock::threadFunction(void) {
                   "time_diff(sec):%d\n",
                   current_position, local_clock_position,
                   time_diff * 60 / steps_per_minute);
-            rotate(time_diff, delay_time);
+            motor.rotate(time_diff, delay_time, flip_rotation);
+            adjustClockPosition(time_diff);
           }
         }
       }
@@ -300,29 +282,11 @@ void HollowClock::getParams(uint32_t value, int &par) {
 HollowClock::HollowClock() {
   PreferencesManager &pm = PreferencesManager::getInstance();
 
-  int motor_ports[4] = CONFIG_MOTOR_PORTS;
-
-  ports[0][0] = motor_ports[0];
-  ports[0][1] = motor_ports[1];
-  ports[0][2] = motor_ports[2];
-  ports[0][3] = motor_ports[3];
-  ports[1][0] = motor_ports[3];
-  ports[1][1] = motor_ports[2];
-  ports[1][2] = motor_ports[1];
-  ports[1][3] = motor_ports[0];
-
-  pinMode(motor_ports[0], OUTPUT);
-  pinMode(motor_ports[1], OUTPUT);
-  pinMode(motor_ports[2], OUTPUT);
-  pinMode(motor_ports[3], OUTPUT);
-
   flip_rotation = pm.getFlipRotation();
   allow_backward_movement = pm.getAllowBackward();
   steps_per_minute = pm.getStepsPerMinute();
   delay_time = pm.getDelayTime();
   clock_position = pm.getClockPosition();
-
-  phase = 0;
   max_clock_position = 12 * 60 * steps_per_minute;
 
 // Test

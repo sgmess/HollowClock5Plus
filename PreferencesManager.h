@@ -99,7 +99,7 @@ private:
   String server_gw = "192.168.100.1" PROGMEM;
   String server_mask = "255.255.255.0" PROGMEM;
 
-  String server_hostname = "Hollow5Plus" PROGMEM;
+  String server_hostname = DEFAULT_LOCALHOST_NAME PROGMEM;
   String ssid = "" PROGMEM;
   String password = "" PROGMEM;
   String ntpserver = DEFAULT_NTP_SERVER PROGMEM;

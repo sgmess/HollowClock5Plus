@@ -16,8 +16,9 @@
 #define DEFAULT_TIMEZONE_LOCATION "Etc/GMT"
 #define DEFAULT_TIMEZONE "GMT0"
 #define DEFAULT_AP_NAME_PREFIX "HOLLOW5P-"
+#define DEFAULT_LOCALHOST_NAME "Hollow5Plus"
 
-#define STRING_VERSION "0.9.0"
-#define STRING_DATE "7 January 2025"
+#define STRING_VERSION "0.9.1"
+#define STRING_DATE "9 January 2025"
 
 #endif
