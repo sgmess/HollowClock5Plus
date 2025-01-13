@@ -1,10 +1,10 @@
 # Hollow Clock 5 Plus
 
-The Hollow Clock 5 Plus is an ESP32-based clock with WiFi-enabled software. It’s designed to work with the Hollow Clock 5 by [Shiura](https://www.thingiverse.com/shiura).
+The Hollow Clock 5 Plus is an ESP32-based clock with WiFi-enabled software. It’s designed to work with the Hollow Clock 5 by [Shiura](https://shiura.com/dfab/index-en.html).
 
 This version of the firmware offers full configurability via WiFi. You can scan for available access points, set time zones from a list, and automate daylight saving recalibration. See the screenshot below for more details.
 
-The original project is maintained at [here](https://www.thingiverse.com/thing:6647784).
+The original project is maintained at [Thingiverse](https://www.thingiverse.com/thing:6647784) or [Instructables](https://www.instructables.com/Hollow-Clock-V/)
 
 The code has been developed for the [SeedStudio XIAO](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html), but other ESP-based microcontrollers should work out of the box.
 

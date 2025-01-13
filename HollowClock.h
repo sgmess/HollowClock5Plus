@@ -41,7 +41,8 @@ private:
   ~HollowClock() = default;
 
   void adjustClockPosition(int steps);
-  int calculateTimeDiff(int local_clock_position, int current_position, bool &direction_forward);
+  int calculateTimeDiff(int local_clock_position, int current_position,
+                        bool &direction_forward);
   void playChime(int current_time);
 
   uint32_t makeCommand(uint8_t cmd, uint8_t val1, uint8_t val2);

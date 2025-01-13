@@ -39,17 +39,17 @@ ClockWebServer &ClockWebServer::getInstance() {
 }
 
 void ClockWebServer::start() {
-  if(webServer == nullptr) {
-      webServer = new WebServer(WEBSERVER_PORT);
-      setServerRouting();
-      webServer->begin();
+  if (webServer == nullptr) {
+    webServer = new WebServer(WEBSERVER_PORT);
+    setServerRouting();
+    webServer->begin();
   }
 }
 
 void ClockWebServer::handleClient() {
-  if(webServer != nullptr){
+  if (webServer != nullptr) {
     webServer->handleClient();
-  } 
+  }
 }
 
 void ClockWebServer::setServerRouting() {
@@ -999,8 +999,7 @@ void ClockWebServer::handleAdvancedPost() {
                       webServer->arg("flip_rotation") == "on";
   bool allowBackward = webServer->hasArg("allow_backward") &&
                        webServer->arg("allow_backward") == "on";
-  bool chime = webServer->hasArg("chime") &&
-                       webServer->arg("chime") == "on";
+  bool chime = webServer->hasArg("chime") && webServer->arg("chime") == "on";
   uint32_t stepsPerMinute = webServer->arg("steps_per_minute").toInt();
   uint8_t delayTime = webServer->arg("delay_time").toInt();
   if (pm.setHostName(hostName) != PREF_OK) {
@@ -1020,10 +1019,10 @@ void ClockWebServer::handleAdvancedPost() {
     return;
   }
 
-    if (pm.setChime(chime) != PREF_OK) {
-        sendError("Failed to set Chime");
-        return;
-    }
+  if (pm.setChime(chime) != PREF_OK) {
+    sendError("Failed to set Chime");
+    return;
+  }
   if (pm.setStepsPerMinute(stepsPerMinute) != PREF_OK) {
     sendError("Failed to set Steps Per Minute");
     return;

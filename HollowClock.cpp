@@ -40,8 +40,8 @@ void HollowClock::adjustClockPosition(int steps) {
   }
 }
 
-int HollowClock::calculateTimeDiff(int local_clock_position,
-                                   int current_time, bool &direction_forward) {
+int HollowClock::calculateTimeDiff(int local_clock_position, int current_time,
+                                   bool &direction_forward) {
   int time_diff = 0;
 
   direction_forward = true;
@@ -77,7 +77,7 @@ int HollowClock::calculateTimeDiff(int local_clock_position,
 
 void HollowClock::playChime(int current_time) {
   static int last_played_chime = -1;
-  uint32_t hours = current_time / (60 *  steps_per_minute);
+  uint32_t hours = current_time / (60 * steps_per_minute);
   uint32_t minutes = current_time / steps_per_minute;
   if (play_chime) {
     // Play chime
@@ -172,8 +172,8 @@ void HollowClock::threadFunction(void) {
         int local_clock_position = (int)clock_position;
         if (current_time != local_clock_position) {
           bool direction_forward = true;
-          int time_diff =
-              calculateTimeDiff(local_clock_position, current_time, direction_forward);
+          int time_diff = calculateTimeDiff(local_clock_position, current_time,
+                                            direction_forward);
           if (time_diff > steps_per_minute) {
             positioning = true;
             TRACE("Positioning: current position: %d, Clock position: %d - "
