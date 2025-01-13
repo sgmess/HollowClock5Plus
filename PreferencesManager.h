@@ -69,6 +69,9 @@ public:
   uint32_t getNTPUpdate(void);
   pref_result_t setNTPUpdate(uint32_t update);
 
+  bool getChime(void);
+  pref_result_t setChime(bool chime);
+
   static const int32_t INVALID_CLOCK_POSITION = -1;
 
 private:
@@ -94,6 +97,7 @@ private:
   const char *prefs_steps_per_minute_key = "StepsPm" PROGMEM;
   const char *prefs_delay_time_key = "DelayTime" PROGMEM;
   const char *prefs_clock_position_key = "ClockPos" PROGMEM;
+  const char *prefs_chime_key = "Chime" PROGMEM;
 
   String server_ip = "192.168.100.1" PROGMEM;
   String server_gw = "192.168.100.1" PROGMEM;
@@ -109,6 +113,7 @@ private:
   int timezone_manual_value = 0;
   bool flip_rotation = false;
   bool allow_backward = false;
+  bool chime = true;
   uint32_t steps_per_minute = 256;
   uint8_t delay_time = 2;
   uint32_t ntp_update = 60 * 60 * 12;

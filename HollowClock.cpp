@@ -1,6 +1,7 @@
 #include "HollowClock.h"
+#include "MotorControl.h"
 #include "PreferencesManager.h"
-#include "Motor.h"
+#include "SoundPlayer.h"
 #include "config.h"
 #include <thread>
 #include <time.h>
@@ -29,17 +30,63 @@ HollowClock &HollowClock::getInstance() {
   return instance;
 }
 
-
 void HollowClock::adjustClockPosition(int steps) {
   // Adjust current position
-  if (clock_position != PreferencesManager::INVALID_CLOCK_POSITION)
+  if (clock_position != PreferencesManager::INVALID_CLOCK_POSITION) {
     clock_position = (steps > 0)
                          ? (clock_position + steps) % max_clock_position
                          : (clock_position + max_clock_position + steps) %
                                max_clock_position;
-  else
-    clock_position = PreferencesManager::INVALID_CLOCK_POSITION;
-} 
+  }
+}
+
+int HollowClock::calculateTimeDiff(int local_clock_position,
+                                   int current_time, bool &direction_forward) {
+  int time_diff = 0;
+
+  direction_forward = true;
+  if (allow_backward_movement) {
+    if (local_clock_position > current_time) {
+      time_diff =
+          min(local_clock_position - current_time,
+              (current_time - local_clock_position + max_clock_position) %
+                  max_clock_position);
+      TRACE("Time diff: %d %d\n", local_clock_position - current_time,
+            (current_time - local_clock_position + max_clock_position) %
+                max_clock_position);
+      direction_forward = false;
+
+    } else {
+      time_diff =
+          min(current_time - local_clock_position,
+              (local_clock_position - current_time + max_clock_position) %
+                  max_clock_position);
+      TRACE("Time diff: %d %d\n", current_time - local_clock_position,
+            (local_clock_position - current_time + max_clock_position) %
+                max_clock_position);
+    }
+  } else {
+    time_diff = (current_time + max_clock_position - local_clock_position) %
+                max_clock_position;
+    TRACE("Time diff: %d %d\n", local_clock_position - current_time,
+          (current_time - local_clock_position + max_clock_position) %
+              max_clock_position);
+  }
+  return time_diff;
+}
+
+void HollowClock::playChime(int current_time) {
+  static int last_played_chime = -1;
+  uint32_t hours = current_time / (60 *  steps_per_minute);
+  uint32_t minutes = current_time / steps_per_minute;
+  if (play_chime) {
+    // Play chime
+    if (last_played_chime != hours && (minutes % 60 == 0)) {
+      last_played_chime = hours;
+      SoundPlayer::getInstance().playChime();
+    }
+  }
+}
 
 void HollowClock::saveClockPosition(void) {
   PreferencesManager &pm = PreferencesManager::getInstance();
@@ -78,7 +125,7 @@ void HollowClock::threadFunction(void) {
           while (steps > 0) {
             int step = (steps > MAX_FAST_MOVMENT_STEPS) ? MAX_FAST_MOVMENT_STEPS
                                                         : steps;
-            motor.rotate(step, delay_time,flip_rotation);
+            motor.rotate(step, delay_time, flip_rotation);
             adjustClockPosition(step);
             steps -= step;
             delay(10);
@@ -114,7 +161,7 @@ void HollowClock::threadFunction(void) {
 
       int hour = timeinfo.tm_hour % 12;
       int minute = timeinfo.tm_min;
-      int current_position = (hour * 60 + minute) * steps_per_minute;
+      int current_time = (hour * 60 + minute) * steps_per_minute;
 
       if (clock_position == PreferencesManager::INVALID_CLOCK_POSITION) {
         // We don't know the current position of the clock so just tick
@@ -122,32 +169,16 @@ void HollowClock::threadFunction(void) {
         adjustClockPosition(steps_per_minute / 16);
         delay(60000 / 16);
       } else {
-        if (current_position != clock_position) {
-          int local_clock_position = (int)clock_position;
+        int local_clock_position = (int)clock_position;
+        if (current_time != local_clock_position) {
           bool direction_forward = true;
-          int time_diff = 0;
-          TRACE("Time diff: %d %d\n",
-                abs(local_clock_position - current_position),
-                (current_position + max_clock_position - clock_position) %
-                    max_clock_position);
-          if (allow_backward_movement) {
-            if (abs(local_clock_position - current_position) <
-                ((current_position + max_clock_position - clock_position) %
-                 max_clock_position)) {
-              direction_forward = false;
-              time_diff = abs(local_clock_position - current_position);
-            }
-          }
-          if (direction_forward) {
-            time_diff =
-                (current_position + max_clock_position - local_clock_position) %
-                max_clock_position;
-          }
+          int time_diff =
+              calculateTimeDiff(local_clock_position, current_time, direction_forward);
           if (time_diff > steps_per_minute) {
             positioning = true;
             TRACE("Positioning: current position: %d, Clock position: %d - "
                   "%stime_diff(sec):%d\n",
-                  current_position, local_clock_position,
+                  current_time, local_clock_position,
                   direction_forward ? "" : "-",
                   time_diff * 60 / steps_per_minute);
 
@@ -157,8 +188,8 @@ void HollowClock::threadFunction(void) {
             if (time_diff <= MAX_FAST_MOVMENT_STEPS) {
               saveClockPosition();
             }
-            motor.rotate(direction_forward ? time_diff : -time_diff,
-                   -1, flip_rotation); // move fast to the current position
+            motor.rotate(direction_forward ? time_diff : -time_diff, -1,
+                         flip_rotation); // move fast to the current position
             adjustClockPosition(direction_forward ? time_diff : -time_diff);
             positioning = false;
             delay(10);
@@ -167,9 +198,10 @@ void HollowClock::threadFunction(void) {
             int32_t local_clock_position = clock_position;
             TRACE("Current position: %d, Clock position: %d - "
                   "time_diff(sec):%d\n",
-                  current_position, local_clock_position,
+                  current_time, local_clock_position,
                   time_diff * 60 / steps_per_minute);
             motor.rotate(time_diff, delay_time, flip_rotation);
+            playChime(local_clock_position);
             adjustClockPosition(time_diff);
           }
         }
@@ -284,6 +316,7 @@ HollowClock::HollowClock() {
 
   flip_rotation = pm.getFlipRotation();
   allow_backward_movement = pm.getAllowBackward();
+  play_chime = pm.getChime();
   steps_per_minute = pm.getStepsPerMinute();
   delay_time = pm.getDelayTime();
   clock_position = pm.getClockPosition();

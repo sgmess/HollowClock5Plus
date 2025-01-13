@@ -41,6 +41,8 @@ private:
   ~HollowClock() = default;
 
   void adjustClockPosition(int steps);
+  int calculateTimeDiff(int local_clock_position, int current_position, bool &direction_forward);
+  void playChime(int current_time);
 
   uint32_t makeCommand(uint8_t cmd, uint8_t val1, uint8_t val2);
   uint32_t makeCommand(uint8_t cmd, int val);
@@ -53,11 +55,12 @@ private:
 
   bool flip_rotation;
   bool allow_backward_movement;
+  bool play_chime;
   bool positioning = false;
   uint32_t steps_per_minute;
   uint8_t delay_time;
   std::atomic<uint32_t> clock_position;
-  uint32_t max_clock_position;
+  int max_clock_position;
 
   void threadFunction(void);
   std::thread clockThread;

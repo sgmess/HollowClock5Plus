@@ -30,6 +30,7 @@ void PreferencesManager::printPreferences(void) {
   TRACE("\tManual Timezone Value: %d\n", timezone_manual_value);
   TRACE("\tFlip Rotation: %s\n", flip_rotation ? "true" : "false");
   TRACE("\tAllow Backward: %s\n", allow_backward ? "true" : "false");
+  TRACE("\tChime: %s\n", chime ? "true" : "false");
   TRACE("\tSteps Per Minute: %d\n", steps_per_minute);
   TRACE("\tDelay Time: %d\n", delay_time);
   TRACE("\tServer IP: %s\n", server_ip.c_str());
@@ -225,6 +226,16 @@ pref_result_t PreferencesManager::setNTPUpdate(uint32_t update) {
   return PREF_OK;
 }
 
+bool PreferencesManager::getChime(void) { return chime; }
+
+pref_result_t PreferencesManager::setChime(bool chime) {
+  if (chime != chime) {
+    chime = chime;
+    preferences.putBool(prefs_chime_key, chime);
+  }
+  return PREF_OK;
+}
+
 String PreferencesManager::getServerGW(void) { return server_gw; }
 
 String PreferencesManager::getServerMask(void) { return server_mask; }
@@ -246,6 +257,7 @@ void PreferencesManager::writeInitialSettings(void) {
   preferences.putUChar(prefs_delay_time_key, delay_time);
   preferences.putString(prefs_server_ip_key, server_ip);
   preferences.putUInt(prefs_clock_position_key, clock_position);
+  preferences.putBool(prefs_chime_key, chime);
 }
 
 void PreferencesManager::readAllSettings() {
@@ -263,7 +275,8 @@ void PreferencesManager::readAllSettings() {
   steps_per_minute = preferences.getUInt(prefs_steps_per_minute_key);
   delay_time = preferences.getUChar(prefs_delay_time_key);
   server_ip = preferences.getString(prefs_server_ip_key);
-  clock_position = preferences.getUInt(prefs_clock_position_key);
+  clock_position = preferences.getUInt(prefs_clock_position_key,clock_position);
+  chime = preferences.getBool(prefs_chime_key,chime);
 }
 PreferencesManager::PreferencesManager() {
   // Constructor implementation

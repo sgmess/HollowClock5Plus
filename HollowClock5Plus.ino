@@ -8,7 +8,9 @@
 
 #include "ClockWebServer.h"
 #include "HollowClock.h"
+#include "MotorControl.h"
 #include "PreferencesManager.h"
+#include "SoundPlayer.h"
 #include "config.h"
 #include "esp_sntp.h"
 #include "zones.h"
@@ -92,7 +94,7 @@ bool connectToNetwork(void) {
   return status == WL_CONNECTED;
 }
 
-void getNTPTime(void) {
+void setupNTPTime(void) {
   String ntp_server;
   String time_zone;
   bool ntp_manual;
@@ -105,12 +107,35 @@ void getNTPTime(void) {
   ntp_manual = pm.getManualTimezone();
   timezone_offset = pm.getManualTimezoneValue();
 
+  //Copied form buggy original implementation of ESP32 Arduino SNTP
+  if (esp_sntp_enabled()) {
+    esp_sntp_stop();
+  }
+  sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  sntp_setservername(0, (char *)ntp_server.c_str());
+  esp_sntp_init();
+
   if (ntp_manual) {
-    configTime(-timezone_offset * 60, 0, ntp_server.c_str());
+    // configTime(-timezone_offset * 60, 0, ntp_server.c_str());
+    int offset = -timezone_offset * 60;
+    char cst[17] = {0};
+    char tz[33] = {0};
+    if (offset % 3600) {
+      sprintf(cst, "UTC%ld:%02u:%02u", offset / 3600, abs((offset % 3600) / 60),
+              abs(offset % 60));
+    } else {
+      sprintf(cst, "UTC%ld", offset / 3600);
+    }
+    sprintf(tz, "%sDST0", cst);
+    setenv("TZ", tz, 1);
+    tzset();
   } else {
-    configTzTime(time_zone.c_str(), ntp_server.c_str());
+    // configTzTime(time_zone.c_str(), ntp_server.c_str());
+    setenv("TZ", time_zone.c_str(), 1);
+    tzset();
   }
   sntp_set_sync_interval(pm.getNTPUpdate() * 1000UL);
+  sntp_restart();
   DBG(printLocalTime();)
 }
 
@@ -120,30 +145,33 @@ String getChipDefaultSSID(void) {
   hex.toUpperCase();
   return DEFAULT_AP_NAME_PREFIX + hex;
 }
-
 void setup() {
   bool wifi_setup_done = false;
   String hostname;
 
   Serial.begin(SERIAL_BAUD_RATE);
+#if DEBUG
+  Serial.setDebugOutput(true);
+#else
+  Serial.setDebugOutput(false);
+#endif
 #if USE_DEEP_SLEEP_WAKEUP_FOR_CLOCK
   esp_sleep_enable_timer_wakeup(1); // uS micro seconds
 #endif
   PreferencesManager &pm = PreferencesManager::getInstance();
+  MotorControl &motor = MotorControl::getInstance();
   pm.printPreferences();
   HollowClock &hclock = HollowClock::getInstance();
-  ClockWebServer &clockWebServer = ClockWebServer::getInstance();
-
-  pinMode(LED_BUILTIN, OUTPUT);
   hostname = pm.getHostName();
-
   if (connectToNetwork()) {
     String ip_addr = WiFi.localIP().toString();
     TRACE("WiFi connected. IP address: %s\n",
           WiFi.localIP().toString().c_str());
+    SoundPlayer::getInstance().playMusic(MUSIC_NOKIA_RINGTONE);
+    
     MDNS.begin(hostname);
     WiFi.setHostname(hostname.c_str());
-    getNTPTime();
+    setupNTPTime();
     hclock.start();
     wifi_setup_done = true;
   } else {
@@ -157,6 +185,7 @@ void setup() {
   }
 
   TRACE("WiFi acting as %s\n", wifi_setup_done ? "STA" : "AP");
+  ClockWebServer &clockWebServer = ClockWebServer::getInstance();
   clockWebServer.start();
 }
 

@@ -8,12 +8,11 @@ class ClockWebServer {
 public:
   static ClockWebServer &getInstance();
   void start();
-  void setPreferenceHandle(Preferences *prefs);
   void handleClient();
   void send(int code, const char *content_type, const String &data);
 
 private:
-  ClockWebServer() = default;
+  ClockWebServer() : webServer(nullptr) {};
   WebServer *webServer;
   Preferences *prefs;
   String lastError = "";

@@ -18,7 +18,7 @@
 #define DEFAULT_AP_NAME_PREFIX "HOLLOW5P-"
 #define DEFAULT_LOCALHOST_NAME "Hollow5Plus"
 
-#define STRING_VERSION "0.9.1"
-#define STRING_DATE "9 January 2025"
+#define STRING_VERSION "1.0.0"
+#define STRING_DATE "13 January 2025"
 
 #endif

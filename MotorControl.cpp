@@ -1,5 +1,15 @@
-#include "Motor.h"
+#include "MotorControl.h"
 #include "config.h"
+
+#if DEBUG
+#define TRACE(...) Serial.printf(__VA_ARGS__)
+#define ERROR(...) Serial.printf(__VA_ARGS__)
+#define DBG(x) x
+#else
+#define TRACE(...)
+#define ERROR(...)
+#define DBG(x)
+#endif
 
 MotorControl &MotorControl::getInstance() {
   static MotorControl instance;
@@ -39,37 +49,43 @@ void MotorControl::rotate(int steps, int delaytime, bool flip_rotation) {
 
 void MotorControl::playSound(unsigned int freq, unsigned int time) {
   int i, j, idx = 0;
- 
+
   if (freq == 0) {
     return;
   }
 
-  int waves       = time * freq / 1000;
+  unsigned int waves = time * freq / 1000;
   int delay_value = 1000000 / (2 * freq);
   int phases[2];
 
-  waves = waves - ( waves % 2 );
-  
+  waves = waves & 0xFFFFFFFE; // make it even
+
   phases[0] = (phase + 1) % 4;
-  phases[1] = (phase    ) % 4;
-  
-  for(j = 0; j < waves; j++) {
-    for(i = 0; i < 4; i++) {
+  phases[1] = (phase) % 4;
+
+  DBG(unsigned long startTime = millis());
+
+  for (j = 0; j < waves; j++) {
+    for (i = 0; i < 4; i++) {
       digitalWrite(ports[0][i], seq[phases[idx]][i]);
     }
-    idx = ( idx + 1 ) % 2;
+    idx = (idx + 1) % 2;
     delayMicroseconds(delay_value);
   }
 
   // power cut
-  for(i = 0; i < 4; i++) {
+  for (i = 0; i < 4; i++) {
     digitalWrite(ports[0][i], LOW);
   }
+
+  DBG(unsigned long endTime = millis());
+  DBG(unsigned long timePassed = endTime - startTime);
+  DBG(Serial.printf("Time passed: %d ms\n", timePassed));
 }
 
 MotorControl::MotorControl() {
   int motor_ports[4] = CONFIG_MOTOR_PORTS;
-  
+
   ports[0][0] = motor_ports[0];
   ports[0][1] = motor_ports[1];
   ports[0][2] = motor_ports[2];

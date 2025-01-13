@@ -1,6 +1,7 @@
 #include "ClockWebServer.h"
 #include "HollowClock.h"
 #include "PreferencesManager.h"
+#include "SoundPlayer.h"
 #include "Zones.h"
 #include "config.h"
 #include <Arduino.h>
@@ -38,23 +39,25 @@ ClockWebServer &ClockWebServer::getInstance() {
 }
 
 void ClockWebServer::start() {
-  webServer = new WebServer(WEBSERVER_PORT);
-  setServerRouting();
-  webServer->begin();
+  if(webServer == nullptr) {
+      webServer = new WebServer(WEBSERVER_PORT);
+      setServerRouting();
+      webServer->begin();
+  }
 }
 
-void ClockWebServer::setPreferenceHandle(Preferences *prefs) {
-  this->prefs = prefs;
+void ClockWebServer::handleClient() {
+  if(webServer != nullptr){
+    webServer->handleClient();
+  } 
 }
-
-void ClockWebServer::handleClient() { webServer->handleClient(); }
 
 void ClockWebServer::setServerRouting() {
   webServer->on(F("/"), HTTP_GET, std::bind(&ClockWebServer::handleRoot, this));
-  webServer->on(F("/wifi.html"), HTTP_GET,
-                std::bind(&ClockWebServer::handleWifi, this));
   webServer->on(F("/time.html"), HTTP_GET,
                 std::bind(&ClockWebServer::handleTime, this));
+  webServer->on(F("/wifi.html"), HTTP_GET,
+                std::bind(&ClockWebServer::handleWifi, this));
   webServer->on(F("/advanced.html"), HTTP_GET,
                 std::bind(&ClockWebServer::handleAdvanced, this));
   webServer->on(F("/position.html"), HTTP_GET,
@@ -572,6 +575,7 @@ void ClockWebServer::handleAdvanced() {
                 document.getElementById('host_ip').value = data.host_ip || '192.168.100.1';
                 document.getElementById('flip_rotation').checked = data.flip_rotation || false;
                 document.getElementById('allow_backward').checked = data.allow_backward || false;
+                document.getElementById('chime').checked = data.chime || false;
                 document.getElementById('steps_per_minute').value = data.steps_per_minute || 256;
                 document.getElementById('delay_time').value = data.delay_time || 2;
             })
@@ -624,10 +628,19 @@ void ClockWebServer::handleAdvanced() {
             <div class="table-row">
                 <div class="table-cell aright tooltip">
                     <span class="tooltiptext">Allow backward move - speeds up calibration - don't use with ratched installed</span>
-                    <label for="flip_rotation"> Allow backward</label>
+                    <label for="flip_rotation">Allow backward</label>
                 </div>
                 <div class="table-cell aleft">
                     <input class="checkbox" type="checkbox" id="allow_backward" name="allow_backward" value="on">
+                </div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell aright tooltip">
+                    <span class="tooltiptext">Play chime every hour</span>
+                    <label for="chime">Chime</label>
+                </div>
+                <div class="table-cell aleft">
+                    <input class="checkbox" type="checkbox" id="chime" name="chime" value="on">
                 </div>
             </div>
             <div class="table-row">
@@ -831,7 +844,7 @@ void ClockWebServer::handleWifiPost() {
   }
   webServer->sendHeader("Location", String("/"), true);
   webServer->send(302, "text/plain", "");
-
+  SoundPlayer::getInstance().playBeep();
   TRACE("SSID: %s, Password: %s\n", ssid.c_str(), passwd.c_str());
 }
 
@@ -939,6 +952,7 @@ void ClockWebServer::handleTimePost() {
 
   webServer->sendHeader("Location", String("/"), true);
   webServer->send(302, "text/plain", "");
+  SoundPlayer::getInstance().playBeep();
 
   TRACE("NTPServer: %s, TimeZone: %s, TimezoneLocation:%s Manual: %d, "
         "ManualValue: %d\n",
@@ -952,6 +966,7 @@ void ClockWebServer::handleAdvancedGet() {
   String hostIP = pm.getServerIP();
   bool flipRotation = pm.getFlipRotation();
   bool allowBackward = pm.getAllowBackward();
+  bool chime = pm.getChime();
   uint32_t stepsPerMinute = pm.getStepsPerMinute();
   uint8_t delayTime = pm.getDelayTime();
   String data = R"(
@@ -964,6 +979,8 @@ void ClockWebServer::handleAdvancedGet() {
                 (flipRotation ? "true" : "false") + R"(,
     "allow_backward": )" +
                 (allowBackward ? "true" : "false") + R"(,
+    "chime": )" +
+                (chime ? "true" : "false") + R"(,
     "steps_per_minute": )" +
                 String(stepsPerMinute) + R"(,
     "delay_time": )" +
@@ -982,6 +999,8 @@ void ClockWebServer::handleAdvancedPost() {
                       webServer->arg("flip_rotation") == "on";
   bool allowBackward = webServer->hasArg("allow_backward") &&
                        webServer->arg("allow_backward") == "on";
+  bool chime = webServer->hasArg("chime") &&
+                       webServer->arg("chime") == "on";
   uint32_t stepsPerMinute = webServer->arg("steps_per_minute").toInt();
   uint8_t delayTime = webServer->arg("delay_time").toInt();
   if (pm.setHostName(hostName) != PREF_OK) {
@@ -1000,6 +1019,11 @@ void ClockWebServer::handleAdvancedPost() {
     sendError("Failed to set Allow Backward");
     return;
   }
+
+    if (pm.setChime(chime) != PREF_OK) {
+        sendError("Failed to set Chime");
+        return;
+    }
   if (pm.setStepsPerMinute(stepsPerMinute) != PREF_OK) {
     sendError("Failed to set Steps Per Minute");
     return;
@@ -1010,6 +1034,8 @@ void ClockWebServer::handleAdvancedPost() {
   }
   webServer->sendHeader("Location", String("/"), true);
   webServer->send(302, "text/plain", "");
+  SoundPlayer::getInstance().playBeep();
+
   TRACE("Set: HostName: %s, HostIP: %s, FlipRotation: %d, StepsPerMinute: %d, "
         "DelayTime: %d\n",
         hostName.c_str(), hostIP.c_str(), flipRotation, stepsPerMinute,
@@ -1021,7 +1047,7 @@ void ClockWebServer::handleCalibrationPost() {
   HollowClock &hclock = HollowClock::getInstance();
 
   bool clock_start =
-    webServer->hasArg("start") && webServer->arg("start") == "start" ? true
+      webServer->hasArg("start") && webServer->arg("start") == "start" ? true
                                                                        : false;
   bool clock_stop =
       webServer->hasArg("stop") && webServer->arg("stop") == "stop" ? true
@@ -1036,6 +1062,7 @@ void ClockWebServer::handleCalibrationPost() {
     if (hclock.moveStart() == HCLOCK_OK) {
       webServer->sendHeader("Location", String("/position.html"), true);
       webServer->send(302, "text/plain", "");
+      SoundPlayer::getInstance().playBeep();
     } else {
       sendError("Failed to send command - queue full");
     }
@@ -1043,6 +1070,7 @@ void ClockWebServer::handleCalibrationPost() {
     if (hclock.moveStop() == HCLOCK_OK) {
       webServer->sendHeader("Location", String("/position.html"), true);
       webServer->send(302, "text/plain", "");
+      SoundPlayer::getInstance().playBeep();
     } else {
       sendError("Failed to send command - queue full");
     }
@@ -1055,6 +1083,7 @@ void ClockWebServer::handleCalibrationPost() {
         TRACE("Moved clock by %d steps\n", steps);
         webServer->sendHeader("Location", String("/position.html"), true);
         webServer->send(302, "text/plain", "");
+        SoundPlayer::getInstance().playBeep();
       } else {
         sendError("Failed to send command - queue full");
       }
@@ -1072,6 +1101,7 @@ void ClockWebServer::handleCalibrationPost() {
         TRACE("HourHand: %d, MinuteHand: %d\n", hourHand, minuteHand);
         webServer->sendHeader("Location", String("/position.html"), true);
         webServer->send(302, "text/plain", "");
+        SoundPlayer::getInstance().playBeep();
       } else {
         sendError("Failed to send command - queue full");
       }
@@ -1099,7 +1129,9 @@ void ClockWebServer::handleApplyPost() {
   if (hclock.isCalibrated()) {
     hclock.saveClockPosition();
   }
+  SoundPlayer::getInstance().playBeep();
   delay(1000);
+  SoundPlayer::getInstance().playBeep();
   ERROR("Rebooting....\n");
 #if USE_DEEP_SLEEP_WAKEUP_FOR_CLOCK
   esp_deep_sleep_start();
@@ -1112,8 +1144,10 @@ void ClockWebServer::handleResetPost() {
   PreferencesManager &pm = PreferencesManager::getInstance();
   webServer->sendHeader("Location", String("/"), true);
   webServer->send(302, "text/plain", "");
+  SoundPlayer::getInstance().playBeep();
   pm.eraseAll();
   delay(500);
+  SoundPlayer::getInstance().playBeep();
   ERROR("Rebooting....\n");
 #if USE_DEEP_SLEEP_WAKEUP_FOR_CLOCK
   esp_deep_sleep_start();

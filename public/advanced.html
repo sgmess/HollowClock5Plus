@@ -8,6 +8,7 @@
                 document.getElementById('host_ip').value = data.host_ip || '192.168.100.1';
                 document.getElementById('flip_rotation').checked = data.flip_rotation || false;
                 document.getElementById('allow_backward').checked = data.allow_backward || false;
+                document.getElementById('chime').checked = data.chime || false;
                 document.getElementById('steps_per_minute').value = data.steps_per_minute || 256;
                 document.getElementById('delay_time').value = data.delay_time || 2;
             })
@@ -60,10 +61,19 @@
             <div class="table-row">
                 <div class="table-cell aright tooltip">
                     <span class="tooltiptext">Allow backward move - speeds up calibration - don't use with ratched installed</span>
-                    <label for="flip_rotation"> Allow backward</label>
+                    <label for="flip_rotation">Allow backward</label>
                 </div>
                 <div class="table-cell aleft">
                     <input class="checkbox" type="checkbox" id="allow_backward" name="allow_backward" value="on">
+                </div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell aright tooltip">
+                    <span class="tooltiptext">Play chime every hour</span>
+                    <label for="chime">Chime</label>
+                </div>
+                <div class="table-cell aleft">
+                    <input class="checkbox" type="checkbox" id="chime" name="chime" value="on">
                 </div>
             </div>
             <div class="table-row">
