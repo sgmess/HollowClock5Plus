@@ -8,6 +8,9 @@ The original project is maintained at [here](https://www.thingiverse.com/thing:6
 
 The code has been developed for the [SeedStudio XIAO](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html), but other ESP-based microcontrollers should work out of the box.
 
+[2025-01-13] New option has been added - chime sound
+In addition when clock connects to the acces point it plays short music ;)
+
 ## Compile
 
 To compile the code, follow these steps:
