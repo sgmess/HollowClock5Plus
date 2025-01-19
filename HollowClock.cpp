@@ -3,10 +3,11 @@
 #include "PreferencesManager.h"
 #include "SoundPlayer.h"
 #include "config.h"
+#include "esp_sntp.h"
 #include <thread>
 #include <time.h>
 
-#if DEBUG
+#if DEBUG_HOLLOW_CLOCK
 #define TRACE(...) Serial.printf(__VA_ARGS__)
 #define ERROR(...) Serial.printf(__VA_ARGS__)
 #else
@@ -39,7 +40,7 @@ void HollowClock::adjustClockPosition(int steps) {
                                max_clock_position;
   }
 }
-
+// 10:35 - 0:27
 int HollowClock::calculateTimeDiff(int local_clock_position, int current_time,
                                    bool &direction_forward) {
   int time_diff = 0;
@@ -47,24 +48,17 @@ int HollowClock::calculateTimeDiff(int local_clock_position, int current_time,
   direction_forward = true;
   if (allow_backward_movement) {
     if (local_clock_position > current_time) {
-      time_diff =
-          min(local_clock_position - current_time,
-              (current_time - local_clock_position + max_clock_position) %
-                  max_clock_position);
-      TRACE("Time diff: %d %d\n", local_clock_position - current_time,
-            (current_time - local_clock_position + max_clock_position) %
-                max_clock_position);
-      direction_forward = false;
-
-    } else {
-      time_diff =
-          min(current_time - local_clock_position,
-              (local_clock_position - current_time + max_clock_position) %
-                  max_clock_position);
-      TRACE("Time diff: %d %d\n", current_time - local_clock_position,
-            (local_clock_position - current_time + max_clock_position) %
-                max_clock_position);
+      current_time += max_clock_position;
     }
+    if (current_time - local_clock_position > max_clock_position / 2) {
+      direction_forward = false;
+    }
+    time_diff = abs(current_time - local_clock_position);
+    TRACE("Time diff: %d %d -> time_diff: %s%d\n",
+          current_time - local_clock_position,
+          (local_clock_position - current_time + max_clock_position) %
+              max_clock_position,
+          direction_forward ? "" : "-", time_diff);
   } else {
     time_diff = (current_time + max_clock_position - local_clock_position) %
                 max_clock_position;
@@ -154,7 +148,7 @@ void HollowClock::threadFunction(void) {
 
     if (clock_moving) {
       if (!::getLocalTime(&timeinfo)) {
-        TRACE("Failed to obtain time");
+        TRACE("Failed to obtain time\n");
         delay(5000);
         continue;
       }
@@ -252,10 +246,20 @@ String HollowClock::getLocalTime(void) {
   return String(time_str);
 }
 
+void HollowClock::setLastSyncedTime(String time) { last_synced_time = time; }
+
+String HollowClock::getLastSyncedTime(void) {
+  TRACE("Sync status:%d\n", sntp_get_sync_status());
+  return last_synced_time;
+}
+
 String HollowClock::getHandsPosition(void) {
   uint8_t hours, minutes;
   getClockPosition(hours, minutes);
   char time_str[6];
+  if (hours == 0) {
+    hours = 12;
+  }
   snprintf(time_str, sizeof(time_str), "%2d:%02d", hours, minutes);
   return String(time_str);
 }
@@ -263,6 +267,7 @@ String HollowClock::getHandsPosition(void) {
 void HollowClock::start(void) {
   clockThread = std::thread(std::bind(&HollowClock::threadFunction, this));
   clockThread.detach();
+  started = true;
 }
 
 // Function to add a command to the queue
@@ -270,7 +275,8 @@ bool HollowClock::addToQueue(uint32_t value) {
   TRACE("Adding command %X to queue\n", value);
   std::lock_guard<std::mutex> lock(threadMutex);
   bool result = false;
-  if (commandQueue.size() < QUEUE_SIZE) {
+
+  if (started && (commandQueue.size() < QUEUE_SIZE)) {
     commandQueue.push(value);
     queueCondition.notify_one();
     result = true;
@@ -311,7 +317,7 @@ void HollowClock::getParams(uint32_t value, int &par) {
   par = (value & 0x7FFFFF) * ((value >> 23) & 0x1 ? -1 : 1);
 }
 
-HollowClock::HollowClock() {
+HollowClock::HollowClock() : started(false), positioning(false) {
   PreferencesManager &pm = PreferencesManager::getInstance();
 
   flip_rotation = pm.getFlipRotation();
@@ -321,6 +327,7 @@ HollowClock::HollowClock() {
   delay_time = pm.getDelayTime();
   clock_position = pm.getClockPosition();
   max_clock_position = 12 * 60 * steps_per_minute;
+  last_synced_time = "never!";
 
 // Test
 #if USE_DEEP_SLEEP_WAKEUP_FOR_CLOCK

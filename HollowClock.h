@@ -27,6 +27,8 @@ public:
   bool isPositioning(void);
   void getClockPosition(uint8_t &hours, uint8_t &minutes);
   String getLocalTime(void);
+  String getLastSyncedTime(void);
+  void setLastSyncedTime(String time);
   String getHandsPosition(void);
 
   hclock_result_t moveStart(void);
@@ -54,10 +56,12 @@ private:
   void getParams(uint32_t value, int &par);
   bool getFromQueue(uint32_t &value);
 
+  String last_synced_time;
   bool flip_rotation;
   bool allow_backward_movement;
   bool play_chime;
-  bool positioning = false;
+  bool started;
+  bool positioning;
   uint32_t steps_per_minute;
   uint8_t delay_time;
   std::atomic<uint32_t> clock_position;

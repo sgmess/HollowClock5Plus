@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#if DEBUG
+#if DEBUG_CLOCK_WEB_SERVER
 #define TRACE(...) Serial.printf(__VA_ARGS__)
 #define ERROR(...) Serial.printf(__VA_ARGS__)
 #else
@@ -744,7 +744,7 @@ void ClockWebServer::handlePosition() {
                     <button type="submit" class="button" name="move" value="move">Move</button>
                 </div>
                 <div class="table-cell aleft">
-                    <input class="input" type="number" id="steps" name="steps" value="" min="-184320" max="184320" step="256" placeholder="Number of steps"><br>
+                    <input class="input" type="number" id="steps" name="steps" value="" min="-184320" max="184320" placeholder="Number of steps"><br>
                 </div>
             </div>
             <div class="table-row">
@@ -755,7 +755,7 @@ void ClockWebServer::handlePosition() {
                     <div class="table-cell aleft no-padding">
                         <div class="table-row no-padding">
                             <div class="table-cell aleft no-padding">
-                                <input class="input-narrow" type="number" id="hour_hand" name="hour_hand" placeholder="Hours pos(0-11) " value="" min="0" max="11" step="1"><br>
+                                <input class="input-narrow" type="number" id="hour_hand" name="hour_hand" placeholder="Hours pos(1-12) " value="" min="1" max="12" step="1"><br>
                             </div>
                             <div class="table-cell aleft no-padding">
                                 <input class="input-narrow" type="number" id="minute_hand" name="minute_hand" placeholder="Min pos(0-59) " value="" min="0" max="59" step="1"><br>
@@ -1090,13 +1090,13 @@ void ClockWebServer::handleCalibrationPost() {
   } else if (clock_set) {
     int hourHand = webServer->arg("hour_hand").toInt();
     int minuteHand = webServer->arg("minute_hand").toInt(); /* code */
-    if (hourHand < 0 || hourHand > 11 || minuteHand < 0 || minuteHand > 59) {
+    if (hourHand < 1 || hourHand > 12 || minuteHand < 0 || minuteHand > 59) {
       String errorMsg = "Invalid position: HourHand: " + String(hourHand) +
                         ", MinuteHand: " + String(minuteHand);
       TRACE("%s\n", errorMsg.c_str());
       sendError(errorMsg);
     } else {
-      if (hclock.updateClockPosition(hourHand, minuteHand) == HCLOCK_OK) {
+      if (hclock.updateClockPosition(hourHand % 12, minuteHand) == HCLOCK_OK) {
         TRACE("HourHand: %d, MinuteHand: %d\n", hourHand, minuteHand);
         webServer->sendHeader("Location", String("/position.html"), true);
         webServer->send(302, "text/plain", "");
@@ -1109,14 +1109,16 @@ void ClockWebServer::handleCalibrationPost() {
 }
 
 void ClockWebServer::handlePositionGet() {
-  String data = R"( 
+  String data = R"(
     {
     "local_time": ")" +
-                HollowClock::getInstance().getLocalTime() + R"(",
+                HollowClock::getInstance().getLocalTime() +
+                R"( (Last updated at: )" +
+                HollowClock::getInstance().getLastSyncedTime() + R"( ))" + R"(",
     "hands_position": ")" +
                 HollowClock::getInstance().getHandsPosition() + R"("
     }
-    )";
+  )";
   webServer->send(200, "application/json", data);
 }
 void ClockWebServer::handleApplyPost() {

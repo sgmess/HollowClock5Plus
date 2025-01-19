@@ -94,7 +94,8 @@
             "system_error": "cpp",
             "print": "cpp",
             "unordered_set": "cpp",
-            "text_encoding": "cpp"
+            "text_encoding": "cpp",
+            "__locale": "cpp"
         }
     }
 }

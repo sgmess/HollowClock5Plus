@@ -12,7 +12,9 @@
 #include "PreferencesManager.h"
 #include "SoundPlayer.h"
 #include "config.h"
+#include "esp_netif_sntp.h"
 #include "esp_sntp.h"
+#include "esp_wifi.h"
 #include "zones.h"
 
 #if DEBUG
@@ -33,7 +35,7 @@ DNSServer dnsServer;
 void printLocalTime() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
-    ERROR("Failed to obtain time");
+    ERROR("Failed to obtain time\n");
     return;
   }
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
@@ -53,15 +55,24 @@ void printLocalTime() {
   Serial.println(&timeinfo, "%M");
   Serial.print("Second: ");
   Serial.println(&timeinfo, "%S");
+}
 
-  Serial.println("Time variables");
-  char timeHour[3];
-  strftime(timeHour, 3, "%H", &timeinfo);
-  Serial.println(timeHour);
-  char timeWeekDay[10];
-  strftime(timeWeekDay, 10, "%A", &timeinfo);
-  Serial.println(timeWeekDay);
-  Serial.println();
+void wifi_connected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  TRACE("Connected to AP successfully!\n");
+}
+void wifi_disconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
+  TRACE("Disconnected from AP! Reson:%d\n", info.wifi_sta_disconnected.reason);
+  PreferencesManager &pm = PreferencesManager::getInstance();
+  String ssid = pm.getSSID();
+  String password = pm.getPassword();
+  WiFi.begin(ssid.c_str(), password.c_str());
+  sntp_restart();
+}
+
+void wifi_got_ip(WiFiEvent_t event, WiFiEventInfo_t info) {
+  TRACE("WiFi IP:%s\n", WiFi.localIP().toString().c_str());
+  TRACE("\t Mask:%s\n", WiFi.subnetMask().toString().c_str());
+  TRACE("\t GW:%s\n", WiFi.gatewayIP().toString().c_str());
 }
 
 bool connectToNetwork(void) {
@@ -70,13 +81,25 @@ bool connectToNetwork(void) {
   String ssid = pm.getSSID();
   DBG(Serial.println(ssid));
   String password = pm.getPassword();
+  WiFiEventId_t evenIDs[3];
 
   if (ssid.isEmpty()) {
     Serial.println("SSID is empty, cannot connect to network.");
     return false;
   }
-
+  // Apparently this has to be the first WiFi call in order to work
+  WiFi.hostname(pm.getHostName());
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_STA);
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  evenIDs[0] =
+      WiFi.onEvent(wifi_got_ip, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+  evenIDs[1] = WiFi.onEvent(wifi_connected,
+                            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_CONNECTED);
+  evenIDs[2] = WiFi.onEvent(wifi_disconnected,
+                            WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.begin(ssid.c_str(), password.c_str());
+
   byte attempts = WIFI_MAX_ATTEMPTS;
   wl_status_t status;
   do {
@@ -86,59 +109,28 @@ bool connectToNetwork(void) {
   } while ((status != WL_CONNECTED) && (--attempts > 0));
 
   if (status != WL_CONNECTED) {
-    WiFi.disconnect();
+    WiFi.removeEvent(evenIDs[0]);
+    WiFi.removeEvent(evenIDs[1]);
+    WiFi.removeEvent(evenIDs[2]);
+    WiFi.disconnect(true);
   } else {
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
+    WiFi.setSleep(false);
   }
   return status == WL_CONNECTED;
 }
 
-void setupNTPTime(void) {
-  String ntp_server;
-  String time_zone;
-  bool ntp_manual;
-  int timezone_offset;
-
-  PreferencesManager &pm = PreferencesManager::getInstance();
-
-  ntp_server = pm.getNTPServer();
-  time_zone = pm.getTimeZone();
-  ntp_manual = pm.getManualTimezone();
-  timezone_offset = pm.getManualTimezoneValue();
-
-  //Copied form buggy original implementation of ESP32 Arduino SNTP
-  if (esp_sntp_enabled()) {
-    esp_sntp_stop();
+void sync_time_cb(struct timeval *t) {
+  TRACE("Time synced from NTP!\n");
+  tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    char time_str[6];
+    strftime(time_str, sizeof(time_str), "%I:%M", &timeinfo);
+    HollowClock::getInstance().setLastSyncedTime(String(time_str));
+    DBG(printLocalTime());
   }
-  sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  sntp_setservername(0, (char *)ntp_server.c_str());
-  esp_sntp_init();
-
-  if (ntp_manual) {
-    // configTime(-timezone_offset * 60, 0, ntp_server.c_str());
-    int offset = -timezone_offset * 60;
-    char cst[17] = {0};
-    char tz[33] = {0};
-    if (offset % 3600) {
-      sprintf(cst, "UTC%ld:%02u:%02u", offset / 3600, abs((offset % 3600) / 60),
-              abs(offset % 60));
-    } else {
-      sprintf(cst, "UTC%ld", offset / 3600);
-    }
-    sprintf(tz, "%sDST0", cst);
-    setenv("TZ", tz, 1);
-    tzset();
-  } else {
-    // configTzTime(time_zone.c_str(), ntp_server.c_str());
-    setenv("TZ", time_zone.c_str(), 1);
-    tzset();
-  }
-  sntp_set_sync_interval(pm.getNTPUpdate() * 1000UL);
-  sntp_restart();
-  DBG(printLocalTime();)
 }
-
 String getChipDefaultSSID(void) {
   uint64_t chipid = ESP.getEfuseMac() >> 40;
   String hex = String(chipid, HEX);
@@ -168,28 +160,48 @@ void setup() {
     TRACE("WiFi connected. IP address: %s\n",
           WiFi.localIP().toString().c_str());
     SoundPlayer::getInstance().playMusic(MUSIC_NOKIA_RINGTONE);
-    
     MDNS.begin(hostname);
-    WiFi.setHostname(hostname.c_str());
-    setupNTPTime();
-    hclock.start();
     wifi_setup_done = true;
   } else {
     TRACE("AP:%s\n", getChipDefaultSSID().c_str());
+    WiFi.mode(WIFI_AP);
     WiFi.softAPConfig(pm.getServerIP().c_str(), pm.getServerGW().c_str(),
                       pm.getServerMask().c_str());
-    WiFi.softAP(pm.getHostName().c_str());
+    WiFi.softAP(getChipDefaultSSID().c_str());
     WiFi.setHostname(pm.getHostName().c_str());
     dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-    WiFi.persistent(false);
   }
 
   TRACE("WiFi acting as %s\n", wifi_setup_done ? "STA" : "AP");
+  hclock.start();
   ClockWebServer &clockWebServer = ClockWebServer::getInstance();
   clockWebServer.start();
 }
 
 void loop() {
+  static bool reset_ntp = true;
+
+  if (reset_ntp) {
+    TRACE("Init NTP\n");
+    PreferencesManager &pm = PreferencesManager::getInstance();
+    static String ntp_server = pm.getNTPServer();
+    String time_zone = pm.getTimeZone();
+    bool ntp_manual = pm.getManualTimezone();
+    int timezone_offset = pm.getManualTimezoneValue();
+    
+    esp_netif_sntp_deinit();
+    sntp_set_time_sync_notification_cb(sync_time_cb);
+    if (ntp_manual) {
+      configTime(-timezone_offset * 60, 0, ntp_server.c_str());
+    } else {
+      configTzTime(time_zone.c_str(), ntp_server.c_str());
+    }
+
+    //sntp_set_sync_interval(15 * 1000UL);
+    sntp_set_sync_interval(pm.getNTPUpdate() * 1000UL);
+    sntp_restart();
+    reset_ntp = false;
+  }
   ClockWebServer &clockWebServer = ClockWebServer::getInstance();
   clockWebServer.handleClient();
   delay(1);

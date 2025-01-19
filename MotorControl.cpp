@@ -1,7 +1,7 @@
 #include "MotorControl.h"
 #include "config.h"
 
-#if DEBUG
+#if DEBUG_MOTOR
 #define TRACE(...) Serial.printf(__VA_ARGS__)
 #define ERROR(...) Serial.printf(__VA_ARGS__)
 #define DBG(x) x

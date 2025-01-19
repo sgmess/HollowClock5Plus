@@ -4,6 +4,19 @@
 #include <Arduino.h>
 
 #define DEBUG 0
+
+#if DEBUG
+#define DEBUG_HOLLOW_CLOCK 0
+#define DEBUG_CLOCK_WEB_SERVER 0
+#define DEBUG_SOUND 0
+#define DEBUG_MOTOR 0
+#else
+#define DEBUG_HOLLOW_CLOCK 0
+#define DEBUG_CLOCK_WEB_SERVER 0
+#define DEBUG_SOUND 0
+#define DEBUG_MOTOR 0
+#endif
+
 #define USE_DEEP_SLEEP_WAKEUP_FOR_CLOCK 0
 #define MAX_FAST_MOVMENT_STEPS 1000
 
@@ -18,7 +31,7 @@
 #define DEFAULT_AP_NAME_PREFIX "HOLLOW5P-"
 #define DEFAULT_LOCALHOST_NAME "Hollow5Plus"
 
-#define STRING_VERSION "1.0.0"
-#define STRING_DATE "13 January 2025"
+#define STRING_VERSION "1.0.1"
+#define STRING_DATE "19 January 2025"
 
 #endif

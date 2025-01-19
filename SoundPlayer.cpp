@@ -4,7 +4,7 @@
 #include "config.h"
 #include "pitches.h"
 
-#if DEBUG
+#if DEBUG_SOUND
 #define TRACE(...) Serial.printf(__VA_ARGS__)
 #define ERROR(...) Serial.printf(__VA_ARGS__)
 #else

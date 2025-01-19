@@ -261,22 +261,28 @@ void PreferencesManager::writeInitialSettings(void) {
 }
 
 void PreferencesManager::readAllSettings() {
-  server_hostname = preferences.getString(prefs_server_hostname_key);
-  ssid = preferences.getString(prefs_ssid_key);
-  password = preferences.getString(prefs_password_key);
-  ntpserver = preferences.getString(prefs_ntpserver_key);
-  timezone = preferences.getString(prefs_timezone_key);
-  ntp_update = preferences.getUInt(prefs_ntp_timeout_key);
-  timezone_location = preferences.getString(prefs_timezone_location_key);
-  timezone_manual = preferences.getBool(prefs_tz_manual_key);
-  timezone_manual_value = preferences.getInt(prefs_tz_manual_value_key);
-  flip_rotation = preferences.getBool(prefs_flip_rotation_key);
-  allow_backward = preferences.getBool(prefs_allow_backward_key);
-  steps_per_minute = preferences.getUInt(prefs_steps_per_minute_key);
-  delay_time = preferences.getUChar(prefs_delay_time_key);
-  server_ip = preferences.getString(prefs_server_ip_key);
-  clock_position = preferences.getUInt(prefs_clock_position_key,clock_position);
-  chime = preferences.getBool(prefs_chime_key,chime);
+  server_hostname =
+      preferences.getString(prefs_server_hostname_key, server_hostname);
+  ssid = preferences.getString(prefs_ssid_key, ssid);
+  password = preferences.getString(prefs_password_key, password);
+  ntpserver = preferences.getString(prefs_ntpserver_key, ntpserver);
+  timezone = preferences.getString(prefs_timezone_key, timezone);
+  ntp_update = preferences.getUInt(prefs_ntp_timeout_key, ntp_update);
+  timezone_location =
+      preferences.getString(prefs_timezone_location_key, timezone_location);
+  timezone_manual = preferences.getBool(prefs_tz_manual_key, timezone_manual);
+  timezone_manual_value =
+      preferences.getInt(prefs_tz_manual_value_key, timezone_manual_value);
+  flip_rotation = preferences.getBool(prefs_flip_rotation_key, flip_rotation);
+  allow_backward =
+      preferences.getBool(prefs_allow_backward_key, allow_backward);
+  steps_per_minute =
+      preferences.getUInt(prefs_steps_per_minute_key, steps_per_minute);
+  delay_time = preferences.getUChar(prefs_delay_time_key, delay_time);
+  server_ip = preferences.getString(prefs_server_ip_key, server_ip);
+  clock_position =
+      preferences.getUInt(prefs_clock_position_key, clock_position);
+  chime = preferences.getBool(prefs_chime_key, chime);
 }
 PreferencesManager::PreferencesManager() {
   // Constructor implementation
