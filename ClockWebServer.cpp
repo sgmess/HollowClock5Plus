@@ -121,7 +121,6 @@ void ClockWebServer::handleRoot() {
                         Settings</button></div>
                 <div class="separator"><button type="button" class="button-big" ; onclick="window.location.href = '/time.html'">Time
                         Settings</button></div>
-
             </div>
         </div>
         <div class="cell">
@@ -483,6 +482,7 @@ void ClockWebServer::handleTime() {
                     setTimezoneMode(data.tz_manual_en || false);
                     document.getElementById('tz_manual_en').checked = data.tz_manual_en || false;
                     document.getElementById('tz_manual').value = data.tz_manual || '';
+                    document.getElementById('ntp_timeout').value = data.ntp_timeout || 3600;
                     updateTz();
                 })
                 .catch(error => console.error('Error fetching time settings:', error));
@@ -544,6 +544,15 @@ void ClockWebServer::handleTime() {
                 </div>
                 <div class="table-cell aleft">
                     <input class="input" type="text" id="ntp_server" name="ntp_server" value="">
+                </div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell aright tooltip">
+                    <span class="tooltiptext">NTP re-synchronnization time in seconds</span>
+                    <label for="ntp_server">NTP Timeout</label>
+                </div>
+                <div class="table-cell aleft">
+                    <input class="input" type="number" id="ntp_timeout" name="ntp_timeout" value="3600" min="15" step="1">
                 </div>
             </div>
         </div>
@@ -887,15 +896,16 @@ void ClockWebServer::handleSsidListGet() {
 
 void ClockWebServer::handleTimeGet() {
   PreferencesManager &pm = PreferencesManager::getInstance();
-  String ntpServer = pm.getNTPServer();
+  String ntp_server = pm.getNTPServer();
+  uint32_t ntp_timeout = pm.getNTPUpdate();
   String timezone = pm.getTimeZone();
   String timezone_location = pm.getTimeZoneLocation();
   bool manual = pm.getManualTimezone();
-  int manualValue = pm.getManualTimezoneValue();
+  int32_t manualValue = pm.getManualTimezoneValue();
   String data = R"(
     {
     "ntp_server": ")" +
-                ntpServer + R"(",
+                ntp_server + R"(",
     "timezone_location": ")" +
                 timezone_location + R"(",
     "timezone_value": ")" +
@@ -903,7 +913,9 @@ void ClockWebServer::handleTimeGet() {
     "tz_manual_en": )" +
                 (manual ? "true" : "false") + R"(,
     "tz_manual": ")" +
-                String(manualValue) + R"("
+                String(manualValue) + R"(",
+    "ntp_timeout": ")" +
+                ntp_timeout + R"("
     }
     )";
   webServer->send(200, "application/json", data);
@@ -911,21 +923,28 @@ void ClockWebServer::handleTimeGet() {
 
 void ClockWebServer::handleTimePost() {
   PreferencesManager &pm = PreferencesManager::getInstance();
-  String ntpServer = webServer->arg("ntp_server");
+  String ntp_server = webServer->arg("ntp_server");
   String timezone = webServer->hasArg("timezone_value")
                         ? webServer->arg("timezone_value")
                         : "";
   String timezone_location = webServer->hasArg("timezone_location")
                                  ? webServer->arg("timezone_location")
                                  : "";
-
   bool manual = webServer->hasArg("tz_manual_en") &&
                 webServer->arg("tz_manual_en") == "on";
-  int manualValue =
+  int32_t manual_value =
       webServer->hasArg("tz_manual") ? webServer->arg("tz_manual").toInt() : 0;
+  uint32_t ntp_timeout = webServer->arg("ntp_timeout")
+                             ? webServer->arg("ntp_timeout").toInt()
+                             : 3600;
 
-  if (pm.setNTPServer(ntpServer) != PREF_OK) {
+  if (pm.setNTPServer(ntp_server) != PREF_OK) {
     sendError("Invalid NTP Server");
+    return;
+  }
+
+  if (pm.setNTPUpdate(ntp_timeout) != PREF_OK) {
+    sendError("Invalid NTP Timeout");
     return;
   }
 
@@ -935,7 +954,7 @@ void ClockWebServer::handleTimePost() {
   }
 
   if (manual) {
-    if (pm.setManualTimezoneValue(manualValue) != PREF_OK) {
+    if (pm.setManualTimezoneValue(manual_value) != PREF_OK) {
       sendError("Failed to set Manual Timezone Value");
       return;
     }
@@ -954,10 +973,11 @@ void ClockWebServer::handleTimePost() {
   webServer->send(302, "text/plain", "");
   SoundPlayer::getInstance().playBeep();
 
-  TRACE("NTPServer: %s, TimeZone: %s, TimezoneLocation:%s Manual: %d, "
+  TRACE("NTPServer: %s, Timeout:%d, TimeZone: %s, TimezoneLocation:%s Manual: "
+        "%d, "
         "ManualValue: %d\n",
-        ntpServer.c_str(), timezone.c_str(), timezone_location.c_str(), manual,
-        manualValue);
+        ntp_server.c_str(), ntp_timeout, timezone.c_str(),
+        timezone_location.c_str(), manual, manual_value);
 }
 
 void ClockWebServer::handleAdvancedGet() {

@@ -30,8 +30,9 @@
 #define DEFAULT_TIMEZONE "GMT0"
 #define DEFAULT_AP_NAME_PREFIX "HOLLOW5P-"
 #define DEFAULT_LOCALHOST_NAME "Hollow5Plus"
+#define DEFAULT_NTP_UPDATE (60 * 60 * 12)
 
-#define STRING_VERSION "1.0.1"
-#define STRING_DATE "19 January 2025"
+#define STRING_VERSION "1.0.2"
+#define STRING_DATE "23 January 2025"
 
 #endif

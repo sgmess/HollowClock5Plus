@@ -116,7 +116,7 @@ private:
   bool chime = true;
   uint32_t steps_per_minute = 256;
   uint8_t delay_time = 2;
-  uint32_t ntp_update = 60 * 60 * 12;
+  uint32_t ntp_update = DEFAULT_NTP_UPDATE;
   int32_t clock_position = INVALID_CLOCK_POSITION;
 
   Preferences preferences;

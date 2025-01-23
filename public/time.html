@@ -44,6 +44,7 @@
                     setTimezoneMode(data.tz_manual_en || false);
                     document.getElementById('tz_manual_en').checked = data.tz_manual_en || false;
                     document.getElementById('tz_manual').value = data.tz_manual || '';
+                    document.getElementById('ntp_timeout').value = data.ntp_timeout || 3600;
                     updateTz();
                 })
                 .catch(error => console.error('Error fetching time settings:', error));
@@ -105,6 +106,15 @@
                 </div>
                 <div class="table-cell aleft">
                     <input class="input" type="text" id="ntp_server" name="ntp_server" value="">
+                </div>
+            </div>
+            <div class="table-row">
+                <div class="table-cell aright tooltip">
+                    <span class="tooltiptext">NTP re-synchronnization time in seconds</span>
+                    <label for="ntp_server">NTP Timeout</label>
+                </div>
+                <div class="table-cell aleft">
+                    <input class="input" type="number" id="ntp_timeout" name="ntp_timeout" value="3600" min="15" step="1">
                 </div>
             </div>
         </div>
