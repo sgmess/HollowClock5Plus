@@ -198,7 +198,7 @@ void HollowClock::threadFunction(void) {
                   current_time, local_clock_position,
                   time_diff * 60 / steps_per_minute);
             motor.rotate(time_diff, delay_time, flip_rotation);
-            playChime(local_clock_position);
+            playChime(current_time);
             adjustClockPosition(time_diff);
           }
         }
