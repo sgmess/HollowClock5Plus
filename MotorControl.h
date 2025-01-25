@@ -25,7 +25,6 @@ private:
                          {LOW, LOW, LOW, HIGH},
                          {HIGH, LOW, LOW, LOW},
                          {LOW, HIGH, LOW, LOW}};
-
 };
 
 #endif

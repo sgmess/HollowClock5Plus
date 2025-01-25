@@ -53,14 +53,13 @@ int HollowClock::calculateTimeDiff(int local_clock_position, int current_time,
     if ((current_time - local_clock_position) > max_clock_position / 2) {
       direction_forward = false;
       time_diff = abs(max_clock_position - current_time + local_clock_position);
-    }
-    else {
+    } else {
       time_diff = abs(current_time - local_clock_position);
     }
     TRACE("Time diff: %d %d (%d)-> time_diff: %s%d\n",
-          current_time - (direction_forward?max_clock_position:0) - local_clock_position,
-          current_time - local_clock_position,
-           max_clock_position / 2,
+          current_time - (direction_forward ? max_clock_position : 0) -
+              local_clock_position,
+          current_time - local_clock_position, max_clock_position / 2,
           direction_forward ? "" : "-", time_diff);
   } else {
     time_diff = (current_time + max_clock_position - local_clock_position) %

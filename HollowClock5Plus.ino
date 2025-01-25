@@ -188,7 +188,7 @@ void loop() {
     String time_zone = pm.getTimeZone();
     bool ntp_manual = pm.getManualTimezone();
     int timezone_offset = pm.getManualTimezoneValue();
-    
+
     esp_netif_sntp_deinit();
     sntp_set_time_sync_notification_cb(sync_time_cb);
     if (ntp_manual) {
@@ -197,7 +197,6 @@ void loop() {
       configTzTime(time_zone.c_str(), ntp_server.c_str());
     }
 
-    //sntp_set_sync_interval(15 * 1000UL);
     sntp_set_sync_interval(pm.getNTPUpdate() * 1000UL);
     sntp_restart();
     reset_ntp = false;
