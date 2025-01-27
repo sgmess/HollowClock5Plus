@@ -15,7 +15,7 @@
 #include "esp_netif_sntp.h"
 #include "esp_sntp.h"
 #include "esp_wifi.h"
-#include "zones.h"
+#include "Zones.h"
 
 #if DEBUG
 #define DBG(x) x
