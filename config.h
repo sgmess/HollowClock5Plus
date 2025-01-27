@@ -32,7 +32,7 @@
 #define DEFAULT_LOCALHOST_NAME "Hollow5Plus"
 #define DEFAULT_NTP_UPDATE (60 * 60 * 12)
 
-#define STRING_VERSION "1.0.3"
-#define STRING_DATE "25 January 2025"
+#define STRING_VERSION "1.0.4-dirty"
+#define STRING_DATE __DATE__
 
 #endif
