@@ -25,7 +25,7 @@ public:
   void saveClockPosition(void);
   bool isCalibrated(void);
   bool isPositioning(void);
-  void getClockPosition(uint8_t &hours, uint8_t &minutes);
+  hclock_result_t getClockPosition(uint8_t &hours, uint8_t &minutes);
   String getLocalTime(void);
   String getLastSyncedTime(void);
   void setLastSyncedTime(String time);

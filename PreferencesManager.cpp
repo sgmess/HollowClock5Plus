@@ -206,9 +206,9 @@ pref_result_t PreferencesManager::setServerIP(const String &ip) {
   return PREF_OK;
 }
 
-int32_t PreferencesManager::getClockPosition(void) { return clock_position; }
+uint32_t PreferencesManager::getClockPosition(void) { return clock_position; }
 
-pref_result_t PreferencesManager::setClock(int32_t position) {
+pref_result_t PreferencesManager::setClock(uint32_t position) {
   if (clock_position != position) {
     clock_position = position;
     preferences.putUInt(prefs_clock_position_key, position);

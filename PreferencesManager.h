@@ -63,8 +63,8 @@ public:
   String getPassword(void);
   pref_result_t setPassword(const String &password);
 
-  int32_t getClockPosition(void);
-  pref_result_t setClock(int32_t position);
+  uint32_t getClockPosition(void);
+  pref_result_t setClock(uint32_t position);
 
   uint32_t getNTPUpdate(void);
   pref_result_t setNTPUpdate(uint32_t update);
@@ -72,7 +72,7 @@ public:
   bool getChime(void);
   pref_result_t setChime(bool chime);
 
-  static const int32_t INVALID_CLOCK_POSITION = -1;
+  static const uint32_t INVALID_CLOCK_POSITION = 0xFFFFFFFF;
 
 private:
   PreferencesManager();
@@ -117,7 +117,7 @@ private:
   uint32_t steps_per_minute = 256;
   uint8_t delay_time = 2;
   uint32_t ntp_update = DEFAULT_NTP_UPDATE;
-  int32_t clock_position = INVALID_CLOCK_POSITION;
+  uint32_t clock_position = INVALID_CLOCK_POSITION;
 
   Preferences preferences;
 };

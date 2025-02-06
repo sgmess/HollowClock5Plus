@@ -165,7 +165,7 @@ void HollowClock::threadFunction(void) {
         adjustClockPosition(steps_per_minute / 16);
         delay(60000 / 16);
       } else {
-        int local_clock_position = (int)clock_position;
+        uint32_t local_clock_position = (uint32_t)clock_position;
         if (current_time != local_clock_position) {
           bool direction_forward = true;
           int time_diff = calculateTimeDiff(local_clock_position, current_time,
@@ -191,7 +191,6 @@ void HollowClock::threadFunction(void) {
             delay(10);
             continue;
           } else {
-            int32_t local_clock_position = clock_position;
             TRACE("Current position: %d, Clock position: %d - "
                   "time_diff(sec):%d\n",
                   current_time, local_clock_position,
@@ -213,10 +212,19 @@ bool HollowClock::isCalibrated(void) {
 
 bool HollowClock::isPositioning(void) { return positioning; }
 
-void HollowClock::getClockPosition(uint8_t &hours, uint8_t &minutes) {
-  int position = clock_position;
-  hours = position / (60 * steps_per_minute);
-  minutes = (position % (60 * steps_per_minute)) / steps_per_minute;
+hclock_result_t HollowClock::getClockPosition(uint8_t &hours, uint8_t &minutes) {
+  hclock_result_t result = HCLOCK_ERROR;
+  uint32_t position = clock_position;
+  if( position == PreferencesManager::INVALID_CLOCK_POSITION){
+    hours = 0;
+    minutes = 0;
+  }
+  else {
+    hours = position / (60 * steps_per_minute);
+    minutes = (position % (60 * steps_per_minute)) / steps_per_minute;
+    result = HCLOCK_OK;
+  }
+  return result;
 }
 hclock_result_t HollowClock::moveStart(void) {
   int value = makeCommand(CMD_START, 0);
@@ -257,6 +265,11 @@ String HollowClock::getLastSyncedTime(void) {
 
 String HollowClock::getHandsPosition(void) {
   uint8_t hours, minutes;
+
+  if (getClockPosition(hours, minutes) != HCLOCK_OK) {
+    return "Unknown - please set hands";
+  }
+
   getClockPosition(hours, minutes);
   char time_str[6];
   if (hours == 0) {
