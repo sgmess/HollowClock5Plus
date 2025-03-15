@@ -21,7 +21,7 @@
 #define MAX_FAST_MOVMENT_STEPS 1000
 
 // Ports used for the stepper motor
-#define CONFIG_MOTOR_PORTS {1, 2, 21, 22}
+#define CONFIG_MOTOR_PORTS {9, 8, 7, 6}
 #define SERIAL_BAUD_RATE 115200
 #define WEBSERVER_PORT 80
 #define DNS_PORT 53
